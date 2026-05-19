@@ -26,6 +26,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import oceanBg from "@/assets/ocean-bg.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -214,7 +215,14 @@ function Index() {
   }
 
   return (
-    <main className="relative min-h-screen w-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0a192f] to-slate-950 text-slate-200">
+    <main className="relative min-h-screen w-full bg-slate-950 text-slate-200">
+      {/* Ocean background image */}
+      <div
+        className="pointer-events-none absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: `url(${oceanBg})` }}
+      />
+      {/* Dark overlay for readability */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-950/80 via-[#0a192f]/70 to-slate-950/90" />
       {/* Subtle atmospheric glow */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(20,184,166,0.10),transparent_55%),radial-gradient(ellipse_at_bottom_left,rgba(56,189,248,0.08),transparent_60%)]" />
 
