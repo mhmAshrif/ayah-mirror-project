@@ -12,6 +12,16 @@ import {
   Unplug,
   Sun,
   BookOpen,
+  Home,
+  Compass,
+  Settings,
+  TrendingUp,
+  Pencil,
+  Bell,
+  Quote,
+  ArrowRight,
+  Waves,
+  ChevronDown,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,43 +48,13 @@ type EmotionMeta = {
   label: string;
   blurb: string;
   icon: LucideIcon;
-  ring: string;
-  accent: string;
 };
 
 const EMOTIONS: EmotionMeta[] = [
-  {
-    key: "anxious",
-    label: "Anxious",
-    blurb: "Heart racing, mind looping",
-    icon: Wind,
-    ring: "border-sky-400/70 shadow-[0_0_0_3px_rgba(56,189,248,0.15)]",
-    accent: "text-sky-300",
-  },
-  {
-    key: "sad",
-    label: "Sad",
-    blurb: "Heavy, tearful, deflated",
-    icon: CloudRain,
-    ring: "border-indigo-400/70 shadow-[0_0_0_3px_rgba(129,140,248,0.15)]",
-    accent: "text-indigo-300",
-  },
-  {
-    key: "disconnected",
-    label: "Disconnected",
-    blurb: "Distant from Allah, numb",
-    icon: Unplug,
-    ring: "border-amber-400/70 shadow-[0_0_0_3px_rgba(251,191,36,0.15)]",
-    accent: "text-amber-300",
-  },
-  {
-    key: "grateful",
-    label: "Grateful",
-    blurb: "Wanting to give thanks",
-    icon: Sun,
-    ring: "border-emerald-400/70 shadow-[0_0_0_3px_rgba(52,211,153,0.15)]",
-    accent: "text-emerald-300",
-  },
+  { key: "anxious", label: "Anxious", blurb: "Heart racing, mind looping", icon: Wind },
+  { key: "sad", label: "Sad", blurb: "Heavy, tearful, deflated", icon: CloudRain },
+  { key: "disconnected", label: "Disconnected", blurb: "Distant, numb", icon: Unplug },
+  { key: "grateful", label: "Grateful", blurb: "Wanting to give thanks", icon: Sun },
 ];
 
 type Remedy = {
@@ -85,6 +65,17 @@ type Remedy = {
 };
 
 type ViewState = "INPUT_STATE" | "REMEDY_STATE";
+
+const NAV_ITEMS = [
+  { key: "home", label: "Home", icon: Home, to: "/" as const },
+  { key: "today", label: "Today for You", icon: Heart, to: "/" as const },
+  { key: "explorer", label: "Quran Explorer", icon: BookOpen, to: "/" as const },
+  { key: "reflections", label: "Reflections", icon: Pencil, to: "/" as const },
+  { key: "progress", label: "Progress", icon: TrendingUp, to: "/" as const },
+  { key: "bookmarks", label: "Bookmarks", icon: Bookmark, to: "/bookmarks" as const },
+  { key: "journey", label: "Journey", icon: Compass, to: "/" as const },
+  { key: "settings", label: "Settings", icon: Settings, to: "/" as const },
+];
 
 function Index() {
   const navigate = useNavigate();
@@ -118,7 +109,10 @@ function Index() {
 
   const charCount = rawInput.length;
   const overLimit = charCount > 500;
-  const canSubmit = useMemo(() => !!selected && !loading && !overLimit, [selected, loading, overLimit]);
+  const canSubmit = useMemo(
+    () => !!selected && !loading && !overLimit,
+    [selected, loading, overLimit]
+  );
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -206,181 +200,273 @@ function Index() {
     }
   };
 
+  const handleQuickSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSubmit();
+  };
+
   if (!authReady || !userId) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-300">
-        <Loader />
+        <RefreshCw className="h-5 w-5 animate-spin text-slate-500" />
       </main>
     );
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(56,189,248,0.12),transparent_60%),radial-gradient(ellipse_at_bottom_left,rgba(16,185,129,0.10),transparent_55%),radial-gradient(ellipse_at_bottom_right,rgba(168,85,247,0.10),transparent_55%)]" />
+    <main className="relative min-h-screen w-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0a192f] to-slate-950 text-slate-200">
+      {/* Subtle atmospheric glow */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(20,184,166,0.10),transparent_55%),radial-gradient(ellipse_at_bottom_left,rgba(56,189,248,0.08),transparent_60%)]" />
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-2xl flex-col px-5 py-8 sm:px-8 sm:py-12">
-        <header className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Heart className="h-5 w-5 text-emerald-400" />
-            <h1 className="text-lg font-semibold tracking-tight">AyahMirror</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              to="/bookmarks"
-              className="flex items-center gap-1.5 rounded-md border border-slate-800 bg-slate-900/40 px-3 py-1.5 text-xs text-slate-400 backdrop-blur-md transition hover:text-slate-100"
-            >
-              <BookOpen className="h-3.5 w-3.5" />
-              Bookmarks
-            </Link>
-            <button
-              onClick={handleSignOut}
-              className="flex items-center gap-1.5 rounded-md border border-slate-800 bg-slate-900/40 px-3 py-1.5 text-xs text-slate-400 backdrop-blur-md transition hover:text-slate-100"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              Sign out
-            </button>
-          </div>
-        </header>
-
-        {view === "INPUT_STATE" ? (
-          <section className="mt-10 flex flex-1 flex-col">
-            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-              What is your heart carrying right now?
-            </h2>
-            <p className="mt-2 text-sm text-slate-400 sm:text-base">
-              Pick one. Then say a little more if you'd like. You'll receive one verse and one small thing to do.
-            </p>
-
-            <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {EMOTIONS.map((e) => {
-                const isSelected = selected === e.key;
-                const Icon = e.icon;
-                return (
-                  <button
-                    key={e.key}
-                    onClick={() => setSelected(e.key)}
-                    className={`group flex items-start gap-3 rounded-xl border bg-slate-900/40 p-4 text-left backdrop-blur-md transition ${
-                      isSelected
-                        ? e.ring
-                        : "border-slate-800 hover:border-slate-700"
-                    }`}
-                  >
-                    <span
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-950/60 ${e.accent}`}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </span>
-                    <span className="flex flex-col">
-                      <span className="text-sm font-semibold text-slate-100">{e.label}</span>
-                      <span className="text-xs text-slate-400">{e.blurb}</span>
-                    </span>
-                  </button>
-                );
-              })}
+      <div className="relative flex min-h-screen w-full">
+        {/* SIDEBAR */}
+        <aside className="hidden md:flex w-64 m-4 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 flex-col justify-between p-4">
+          <div>
+            <div className="flex items-center gap-2.5 px-2 pb-6">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-teal-400/30 to-cyan-500/10 border border-teal-400/30">
+                <Sparkles className="h-4 w-4 text-teal-300" />
+              </div>
+              <span className="text-base font-semibold tracking-tight text-slate-100">AyahMirror</span>
             </div>
 
-            <div className="mt-6">
-              <label htmlFor="rawInput" className="text-xs font-medium uppercase tracking-wider text-slate-500">
-                Say a little more (optional)
-              </label>
-              <textarea
-                id="rawInput"
-                value={rawInput}
-                onChange={(e) => setRawInput(e.target.value.slice(0, 500))}
-                maxLength={500}
-                rows={4}
-                placeholder="I keep waking up at 3am and my chest feels tight..."
-                className="mt-2 w-full resize-none rounded-xl border border-slate-800 bg-slate-900/40 p-4 text-sm leading-relaxed text-slate-100 placeholder:text-slate-600 backdrop-blur-md focus:border-emerald-500/50 focus:outline-none"
-              />
-              <div className="mt-1 flex justify-end text-xs text-slate-500">
-                <span className={overLimit ? "text-rose-400" : ""}>{charCount} / 500</span>
+            <nav className="flex flex-col gap-1">
+              {NAV_ITEMS.map((item) => {
+                const Icon = item.icon;
+                const isActive = item.key === "home";
+                return (
+                  <Link
+                    key={item.key}
+                    to={item.to}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
+                      isActive
+                        ? "bg-gradient-to-r from-teal-500/20 to-transparent border-l-2 border-teal-400 text-teal-300"
+                        : "text-slate-400 hover:text-slate-200 hover:bg-white/5 border-l-2 border-transparent"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+
+          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+            <Waves className="h-4 w-4 text-teal-400 mb-2" />
+            <div className="text-sm font-medium text-slate-100">Mirissa, Sri Lanka</div>
+            <div className="mt-1 text-xs text-slate-400">Peace. Purpose. Presence.</div>
+          </div>
+        </aside>
+
+        {/* MAIN */}
+        <div className="flex-1 flex flex-col px-5 py-6 sm:px-8 sm:py-8">
+          {/* HEADER */}
+          <header className="flex items-center justify-between gap-4">
+            <div className="md:hidden flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-teal-300" />
+              <span className="text-base font-semibold">AyahMirror</span>
+            </div>
+
+            <div className="hidden md:flex flex-1 justify-center">
+              <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs text-slate-300 backdrop-blur-md">
+                <Sparkles className="h-3.5 w-3.5 text-teal-300" />
+                Quranic Wellness Mirror
               </div>
             </div>
 
-            <button
-              onClick={handleSubmit}
-              disabled={!canSubmit}
-              className="mt-6 flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
-            >
-              {loading ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  Reflecting...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4" />
-                  Reveal my verse
-                </>
-              )}
-            </button>
+            <div className="flex items-center gap-3">
+              <button className="text-slate-400 hover:text-teal-300 transition" aria-label="Theme">
+                <Sun className="h-4 w-4" />
+              </button>
+              <button className="relative text-slate-400 hover:text-teal-300 transition" aria-label="Notifications">
+                <Bell className="h-4 w-4" />
+                <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-teal-400" />
+              </button>
+              <div className="h-5 w-px bg-white/10" />
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-2 text-slate-400 hover:text-slate-100 transition"
+                aria-label="Sign out"
+              >
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-teal-400/40 to-cyan-600/30 border border-white/10 flex items-center justify-center">
+                  <LogOut className="h-3.5 w-3.5 text-slate-200" />
+                </div>
+                <ChevronDown className="h-3 w-3" />
+              </button>
+            </div>
+          </header>
+
+          {/* HERO */}
+          <section className="mt-8 sm:mt-12 flex flex-col items-center text-center">
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-teal-400 drop-shadow-[0_0_15px_rgba(45,212,191,0.5)]">
+              AyahMirror
+            </h1>
+            <div className="mt-3 flex items-center gap-2 text-teal-400/60">
+              <span className="h-px w-12 bg-teal-400/30" />
+              <Sparkles className="h-3 w-3" />
+              <span className="h-px w-12 bg-teal-400/30" />
+            </div>
+            <p className="mt-4 text-base sm:text-lg text-teal-100/80">
+              How is your <span className="text-teal-300">soul</span> feeling in this moment?
+            </p>
           </section>
-        ) : (
-          remedy && (
-            <section className="mt-10 flex flex-1 flex-col">
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 backdrop-blur-md sm:p-8">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-400">
-                    A Verse For You
-                  </span>
+
+          {/* MAIN CARD */}
+          <div className="mt-8 flex flex-col items-center">
+            {view === "REMEDY_STATE" && remedy ? (
+              <article className="w-full max-w-3xl rounded-3xl bg-white/5 backdrop-blur-xl border border-teal-500/30 p-6 sm:p-8 shadow-[0_8px_32px_0_rgba(15,118,110,0.2)] relative overflow-hidden">
+                <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-teal-500/10 blur-3xl" />
+
+                <div className="flex items-center justify-between gap-3 relative">
+                  <div className="flex items-center gap-2 rounded-full border border-teal-400/40 bg-teal-500/10 px-4 py-1.5 text-xs sm:text-sm font-medium text-teal-300 shadow-[0_0_20px_rgba(45,212,191,0.2)]">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Spiritual Remedy: Surah {remedy.surah} • Ayah {remedy.ayah}
+                  </div>
                   <button
                     onClick={toggleBookmark}
                     disabled={bookmarkBusy}
-                    className="flex items-center gap-1.5 rounded-md border border-slate-800 bg-slate-950/60 px-2.5 py-1.5 text-xs text-slate-300 transition hover:text-emerald-300 disabled:opacity-50"
-                    aria-pressed={bookmarked}
+                    className="text-slate-300 hover:text-teal-300 transition disabled:opacity-50"
+                    aria-label="Bookmark"
                   >
                     {bookmarked ? (
-                      <>
-                        <BookmarkCheck className="h-3.5 w-3.5 text-emerald-400" />
-                        Saved
-                      </>
+                      <BookmarkCheck className="h-5 w-5 text-teal-400" />
                     ) : (
-                      <>
-                        <Bookmark className="h-3.5 w-3.5" />
-                        Bookmark
-                      </>
+                      <Bookmark className="h-5 w-5" />
                     )}
                   </button>
                 </div>
 
-                <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-                  Surah {remedy.surah} : Ayah {remedy.ayah}
-                </h2>
-
-                <div className="mt-6 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5">
-                  <p className="text-base italic leading-relaxed text-slate-200 sm:text-lg">
+                <div className="mt-6 relative">
+                  <Quote className="h-8 w-8 text-teal-400/70" />
+                  <blockquote className="mt-3 font-serif italic text-3xl md:text-5xl text-white leading-snug">
                     {remedy.contextMessage}
-                  </p>
+                  </blockquote>
                 </div>
 
-                <div className="mt-5 rounded-xl border border-amber-400/30 bg-amber-400/10 p-5">
-                  <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-amber-300">
-                    Your prescription · within 24 hours
+                <div className="my-6 flex items-center justify-center gap-3 text-teal-500/40">
+                  <span className="h-px w-20 bg-teal-500/20" />
+                  <span className="text-xs">✦</span>
+                  <span className="h-px w-20 bg-teal-500/20" />
+                </div>
+
+                <div className="bg-[#042f2e]/50 border border-teal-500/20 rounded-xl p-5 flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-teal-400/40 bg-teal-500/10 shadow-[0_0_20px_rgba(45,212,191,0.25)]">
+                    <Pencil className="h-5 w-5 text-teal-300" />
                   </div>
-                  <p className="text-sm font-medium leading-relaxed text-amber-50 sm:text-base">
-                    {remedy.prescription}
-                  </p>
+                  <div>
+                    <div className="text-sm sm:text-base font-semibold text-teal-300">
+                      Your 24-Hour Micro-Prescription
+                    </div>
+                    <p className="mt-1 text-sm sm:text-base text-slate-200 leading-relaxed">
+                      {remedy.prescription}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
+                <div className="mt-6 flex justify-center">
+                  <button
+                    onClick={handleReset}
+                    className="rounded-full border border-white/10 bg-white/5 px-5 py-2 text-xs text-slate-300 hover:text-teal-300 transition"
+                  >
+                    Reflect on something else
+                  </button>
+                </div>
+              </article>
+            ) : (
+              <article className="w-full max-w-3xl rounded-3xl bg-white/5 backdrop-blur-xl border border-teal-500/30 p-6 sm:p-8 shadow-[0_8px_32px_0_rgba(15,118,110,0.2)] relative overflow-hidden">
+                <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-teal-500/10 blur-3xl" />
+
+                <div className="flex items-center gap-2 rounded-full border border-teal-400/40 bg-teal-500/10 px-4 py-1.5 w-fit text-xs sm:text-sm font-medium text-teal-300 shadow-[0_0_20px_rgba(45,212,191,0.2)]">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Choose what your heart is carrying
+                </div>
+
+                <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {EMOTIONS.map((e) => {
+                    const isSelected = selected === e.key;
+                    const Icon = e.icon;
+                    return (
+                      <button
+                        key={e.key}
+                        onClick={() => setSelected(e.key)}
+                        className={`group flex flex-col items-start gap-2 rounded-2xl border p-4 text-left transition backdrop-blur-md ${
+                          isSelected
+                            ? "border-teal-400/60 bg-teal-500/10 shadow-[0_0_25px_rgba(45,212,191,0.25)]"
+                            : "border-white/10 bg-white/5 hover:border-teal-400/30"
+                        }`}
+                      >
+                        <div
+                          className={`flex h-9 w-9 items-center justify-center rounded-lg border ${
+                            isSelected
+                              ? "border-teal-400/50 bg-teal-500/20 text-teal-200"
+                              : "border-white/10 bg-white/5 text-teal-300/70"
+                          }`}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold text-slate-100">{e.label}</div>
+                          <div className="text-[11px] text-slate-400 leading-snug">{e.blurb}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-6">
+                  <textarea
+                    value={rawInput}
+                    onChange={(ev) => setRawInput(ev.target.value.slice(0, 500))}
+                    maxLength={500}
+                    rows={3}
+                    placeholder="Say a little more (optional)... I keep waking up at 3am and my chest feels tight."
+                    className="w-full resize-none rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-relaxed text-slate-100 placeholder:text-slate-500 backdrop-blur-md focus:border-teal-400/50 focus:outline-none focus:ring-1 focus:ring-teal-400/30"
+                  />
+                  <div className="mt-1 flex justify-end text-xs text-slate-500">
+                    <span className={overLimit ? "text-rose-400" : ""}>{charCount} / 500</span>
+                  </div>
+                </div>
+              </article>
+            )}
+
+            {/* BOTTOM ACTION BAR */}
+            <form
+              onSubmit={handleQuickSubmit}
+              className="mt-6 w-full max-w-2xl bg-white/5 backdrop-blur-md border border-white/10 rounded-full flex items-center px-5 py-3 shadow-[0_0_30px_rgba(15,118,110,0.1)]"
+            >
+              <Heart className="h-4 w-4 text-teal-300 shrink-0" />
+              <input
+                type="text"
+                value={rawInput}
+                onChange={(ev) => setRawInput(ev.target.value.slice(0, 500))}
+                placeholder={selected ? "Press → to reveal your verse" : "Pick a feeling above, then press →"}
+                className="flex-1 mx-3 bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
+              />
               <button
-                onClick={handleReset}
-                className="mt-6 self-center rounded-lg border border-slate-800 bg-slate-900/40 px-5 py-2.5 text-sm text-slate-300 backdrop-blur-md transition hover:text-slate-100"
+                type="submit"
+                disabled={!canSubmit}
+                aria-label="Reveal verse"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-teal-400/40 bg-teal-500/20 text-teal-200 transition hover:bg-teal-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Reflect on something else
+                {loading ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ArrowRight className="h-4 w-4" />
+                )}
               </button>
-            </section>
-          )
-        )}
+            </form>
 
-        <footer className="mt-12 text-center text-xs text-slate-600">
-          AyahMirror · meet your heart where it is
-        </footer>
+            {/* FOOTER QUOTE */}
+            <footer className="mt-10 text-center px-4">
+              <p className="text-xs sm:text-sm text-teal-600 italic">
+                <span className="text-teal-500">“</span> And We have certainly made the Quran easy for remembrance,
+                so is there any who will remember? <span className="text-teal-500">”</span>
+              </p>
+              <p className="mt-1 text-xs text-teal-700">— Surah Al-Qamar (54:17)</p>
+            </footer>
+          </div>
+        </div>
       </div>
     </main>
   );
-}
-
-function Loader() {
-  return <RefreshCw className="h-5 w-5 animate-spin text-slate-500" />;
 }
