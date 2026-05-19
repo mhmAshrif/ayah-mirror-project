@@ -225,13 +225,13 @@ function Index() {
             <h1 className="text-lg font-semibold tracking-tight">AyahMirror</h1>
           </div>
           <div className="flex items-center gap-2">
-            <a
-              href="/bookmarks"
+            <Link
+              to="/bookmarks"
               className="flex items-center gap-1.5 rounded-md border border-slate-800 bg-slate-900/40 px-3 py-1.5 text-xs text-slate-400 backdrop-blur-md transition hover:text-slate-100"
             >
               <BookOpen className="h-3.5 w-3.5" />
               Bookmarks
-            </a>
+            </Link>
             <button
               onClick={handleSignOut}
               className="flex items-center gap-1.5 rounded-md border border-slate-800 bg-slate-900/40 px-3 py-1.5 text-xs text-slate-400 backdrop-blur-md transition hover:text-slate-100"
