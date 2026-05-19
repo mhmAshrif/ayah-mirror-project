@@ -11,6 +11,7 @@ import {
   CloudRain,
   Unplug,
   Sun,
+  BookOpen,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
