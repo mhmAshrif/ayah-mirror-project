@@ -14,7 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      emotion_logs: {
+        Row: {
+          ayah_number: number
+          context_message: string | null
+          created_at: string
+          emotion: string
+          id: string
+          prescription: string | null
+          surah_id: number
+          user_id: string
+          user_raw_input: string | null
+        }
+        Insert: {
+          ayah_number: number
+          context_message?: string | null
+          created_at?: string
+          emotion: string
+          id?: string
+          prescription?: string | null
+          surah_id: number
+          user_id: string
+          user_raw_input?: string | null
+        }
+        Update: {
+          ayah_number?: number
+          context_message?: string | null
+          created_at?: string
+          emotion?: string
+          id?: string
+          prescription?: string | null
+          surah_id?: number
+          user_id?: string
+          user_raw_input?: string | null
+        }
+        Relationships: []
+      }
+      spiritual_bookmarks: {
+        Row: {
+          ayah_number: number
+          context_message: string | null
+          created_at: string
+          id: string
+          prescription: string | null
+          surah_id: number
+          user_id: string
+        }
+        Insert: {
+          ayah_number: number
+          context_message?: string | null
+          created_at?: string
+          id?: string
+          prescription?: string | null
+          surah_id: number
+          user_id: string
+        }
+        Update: {
+          ayah_number?: number
+          context_message?: string | null
+          created_at?: string
+          id?: string
+          prescription?: string | null
+          surah_id?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
