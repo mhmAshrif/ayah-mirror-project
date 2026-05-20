@@ -1,36 +1,32 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   Bookmark,
   BookmarkCheck,
-  Heart,
-  LogOut,
-  RefreshCw,
-  Sparkles,
-  Wind,
   CloudRain,
-  Unplug,
-  Sun,
-  BookOpen,
-  Home,
-  Compass,
-  Settings,
-  TrendingUp,
-  Pencil,
-  Bell,
-  Quote,
-  ArrowRight,
-  Waves,
-  ChevronDown,
-  Play,
   Pause,
+  Pencil,
+  Play,
+  Quote,
+  RefreshCw,
+  Send,
+  Sparkles,
+  Sun,
+  Unplug,
+  Wind,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import oceanBg from "@/assets/ocean-bg.png";
 import { useServerFn } from "@tanstack/react-start";
-import { getVerseContent, type VerseContent } from "@/lib/quran.functions";
+import {
+  getDailyVerse,
+  getVerseContent,
+  type VerseContent,
+} from "@/lib/quran.functions";
+import { AppShell } from "@/components/AppShell";
+import { useApp } from "@/contexts/AppContext";
+import { computeStreak, uniqueDays } from "@/lib/streak";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -47,7 +43,6 @@ export const Route = createFileRoute("/")({
 });
 
 type EmotionKey = "anxious" | "sad" | "disconnected" | "grateful";
-
 type EmotionMeta = {
   key: EmotionKey;
   label: string;
@@ -69,25 +64,13 @@ type Remedy = {
   prescription: string;
 };
 
-type ViewState = "INPUT_STATE" | "REMEDY_STATE";
-
-const NAV_ITEMS = [
-  { key: "home", label: "Home", icon: Home, to: "/" as const },
-  { key: "today", label: "Today for You", icon: Heart, to: "/" as const },
-  { key: "explorer", label: "Quran Explorer", icon: BookOpen, to: "/" as const },
-  { key: "reflections", label: "Reflections", icon: Pencil, to: "/" as const },
-  { key: "progress", label: "Progress", icon: TrendingUp, to: "/" as const },
-  { key: "bookmarks", label: "Bookmarks", icon: Bookmark, to: "/bookmarks" as const },
-  { key: "journey", label: "Journey", icon: Compass, to: "/" as const },
-  { key: "settings", label: "Settings", icon: Settings, to: "/" as const },
-];
-
 function Index() {
   const navigate = useNavigate();
-  const [userId, setUserId] = useState<string | null>(null);
-  const [authReady, setAuthReady] = useState(false);
+  const { userId, authReady, theme, prefs, privacyPublic, pushNotification } =
+    useApp();
+  const isLight = theme === "light";
 
-  const [view, setView] = useState<ViewState>("INPUT_STATE");
+  const [view, setView] = useState<"INPUT_STATE" | "REMEDY_STATE">("INPUT_STATE");
   const [selected, setSelected] = useState<EmotionKey | null>(null);
   const [rawInput, setRawInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -98,35 +81,59 @@ function Index() {
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [bookmarkBusy, setBookmarkBusy] = useState(false);
+
+  // Daily verse
+  const [daily, setDaily] = useState<VerseContent | null>(null);
+  const [dailyPlaying, setDailyPlaying] = useState(false);
+  const fetchDaily = useServerFn(getDailyVerse);
   const fetchVerse = useServerFn(getVerseContent);
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
-      setUserId(session?.user?.id ?? null);
-      setAuthReady(true);
-    });
-    supabase.auth.getSession().then(({ data }) => {
-      setUserId(data.session?.user?.id ?? null);
-      setAuthReady(true);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
+  // Streak + reflection
+  const [streak, setStreak] = useState(0);
+  const [totalReflections, setTotalReflections] = useState(0);
+  const [reflectionText, setReflectionText] = useState("");
+  const [submittingReflection, setSubmittingReflection] = useState(false);
 
   useEffect(() => {
     if (authReady && !userId) navigate({ to: "/login" });
   }, [authReady, userId, navigate]);
 
+  useEffect(() => {
+    fetchDaily()
+      .then(setDaily)
+      .catch(() => undefined);
+  }, [fetchDaily]);
+
+  useEffect(() => {
+    if (!userId) return;
+    void loadStreak(userId);
+    // Gentle reminder once per session
+    pushNotification({
+      kind: "reminder",
+      title: "Log your reflection",
+      body: "One sentence is enough.",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  const loadStreak = async (uid: string) => {
+    const { data } = await supabase
+      .from("reflections")
+      .select("created_at")
+      .eq("user_id", uid)
+      .order("created_at", { ascending: false })
+      .limit(365);
+    const rows = data ?? [];
+    setTotalReflections(rows.length);
+    setStreak(computeStreak(uniqueDays(rows.map((r) => r.created_at))));
+  };
+
   const charCount = rawInput.length;
   const overLimit = charCount > 500;
   const canSubmit = useMemo(
     () => !!selected && !loading && !overLimit,
-    [selected, loading, overLimit]
+    [selected, loading, overLimit],
   );
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate({ to: "/login" });
-  };
 
   const handleSubmit = async () => {
     if (!canSubmit || !selected) return;
@@ -135,12 +142,12 @@ function Index() {
       const res = await fetch("/api/match-emotion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selectedEmotion: selected, rawInput: rawInput.slice(0, 500) }),
+        body: JSON.stringify({
+          selectedEmotion: selected,
+          rawInput: rawInput.slice(0, 500),
+        }),
       });
-      if (!res.ok) {
-        const msg = await res.text().catch(() => "Request failed");
-        throw new Error(msg || `HTTP ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as Remedy;
       setRemedy(data);
       setBookmarked(false);
@@ -148,33 +155,32 @@ function Index() {
       setAudioPlaying(false);
       setView("REMEDY_STATE");
 
-      // Fetch real Quran content (Quran Foundation Content API)
       setVerseLoading(true);
-      fetchVerse({ data: { surah: data.surah, ayah: data.ayah } })
-        .then((v) => setVerse(v))
-        .catch((e) => {
-          console.error("verse fetch failed", e);
-          toast.error("Couldn't load the Quran verse text.");
-        })
+      fetchVerse({
+        data: {
+          surah: data.surah,
+          ayah: data.ayah,
+          translationId: prefs.translation_id,
+          reciterId: prefs.reciter_id,
+        },
+      })
+        .then(setVerse)
+        .catch(() => toast.error("Couldn't load Quran verse."))
         .finally(() => setVerseLoading(false));
 
       if (userId) {
-        try {
-          await supabase.from("emotion_logs").insert({
-            user_id: userId,
-            emotion: selected,
-            user_raw_input: rawInput.slice(0, 500) || null,
-            surah_id: data.surah,
-            ayah_number: data.ayah,
-            context_message: data.contextMessage,
-            prescription: data.prescription,
-          });
-        } catch (logErr) {
-          console.error("log insert failed", logErr);
-        }
+        await supabase.from("emotion_logs").insert({
+          user_id: userId,
+          emotion: selected,
+          user_raw_input: rawInput.slice(0, 500) || null,
+          surah_id: data.surah,
+          ayah_number: data.ayah,
+          context_message: data.contextMessage,
+          prescription: data.prescription,
+        });
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't load your verse. Try again.");
+      toast.error(err instanceof Error ? err.message : "Try again.");
     } finally {
       setLoading(false);
     }
@@ -184,10 +190,10 @@ function Index() {
     setView("INPUT_STATE");
     setRemedy(null);
     setVerse(null);
-    setAudioPlaying(false);
     setSelected(null);
     setRawInput("");
     setBookmarked(false);
+    setAudioPlaying(false);
   };
 
   const toggleBookmark = async () => {
@@ -195,26 +201,28 @@ function Index() {
     setBookmarkBusy(true);
     try {
       if (bookmarked) {
-        const { error } = await supabase
+        await supabase
           .from("spiritual_bookmarks")
           .delete()
           .eq("user_id", userId)
           .eq("surah_id", remedy.surah)
           .eq("ayah_number", remedy.ayah);
-        if (error) throw error;
         setBookmarked(false);
         toast.success("Bookmark removed");
       } else {
-        const { error } = await supabase.from("spiritual_bookmarks").insert({
+        await supabase.from("spiritual_bookmarks").insert({
           user_id: userId,
           surah_id: remedy.surah,
           ayah_number: remedy.ayah,
           context_message: remedy.contextMessage,
           prescription: remedy.prescription,
+          arabic: verse?.arabic ?? null,
+          translation: verse?.translation ?? null,
+          translation_author: verse?.translationAuthor ?? null,
+          surah_name: verse?.surahNameEn ?? null,
         });
-        if (error) throw error;
         setBookmarked(true);
-        toast.success("Saved to your bookmarks");
+        toast.success("Saved to bookmarks");
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Bookmark failed");
@@ -223,9 +231,28 @@ function Index() {
     }
   };
 
-  const handleQuickSubmit = (e: React.FormEvent) => {
+  const submitReflection = async (e: React.FormEvent) => {
     e.preventDefault();
-    handleSubmit();
+    const text = reflectionText.trim();
+    if (!text || !userId) return;
+    setSubmittingReflection(true);
+    try {
+      const { error } = await supabase.from("reflections").insert({
+        user_id: userId,
+        content: text.slice(0, 280),
+        is_public: privacyPublic,
+        surah_id: remedy?.surah ?? null,
+        ayah_number: remedy?.ayah ?? null,
+      });
+      if (error) throw error;
+      setReflectionText("");
+      toast.success("Reflection saved");
+      await loadStreak(userId);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save");
+    } finally {
+      setSubmittingReflection(false);
+    }
   };
 
   if (!authReady || !userId) {
@@ -236,327 +263,347 @@ function Index() {
     );
   }
 
+  const cardBg = isLight
+    ? "bg-white/80 border-slate-200"
+    : "bg-white/5 border-teal-500/30";
+
   return (
-    <main className="relative min-h-screen w-full bg-slate-950 text-slate-200">
-      {/* Ocean background image */}
-      <div
-        className="pointer-events-none absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: `url(${oceanBg})` }}
-      />
-      {/* Dark overlay for readability */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-950/80 via-[#0a192f]/70 to-slate-950/90" />
-      {/* Subtle atmospheric glow */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(20,184,166,0.10),transparent_55%),radial-gradient(ellipse_at_bottom_left,rgba(56,189,248,0.08),transparent_60%)]" />
+    <AppShell>
+      {/* HERO */}
+      <section className="flex flex-col items-center text-center">
+        <h1
+          className={`text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight text-transparent bg-clip-text ${
+            isLight
+              ? "bg-gradient-to-r from-slate-900 to-teal-600"
+              : "bg-gradient-to-r from-white to-teal-400 drop-shadow-[0_0_15px_rgba(45,212,191,0.5)]"
+          }`}
+        >
+          AyahMirror
+        </h1>
+        <div className="mt-3 flex items-center gap-2 text-teal-400/60">
+          <span className="h-px w-8 sm:w-12 bg-teal-400/30" />
+          <Sparkles className="h-3 w-3" />
+          <span className="h-px w-8 sm:w-12 bg-teal-400/30" />
+        </div>
+        <p
+          className={`mt-4 text-sm sm:text-lg ${
+            isLight ? "text-slate-600" : "text-teal-100/80"
+          }`}
+        >
+          How is your{" "}
+          <span className={isLight ? "text-teal-700" : "text-teal-300"}>soul</span>{" "}
+          feeling in this moment?
+        </p>
 
-      <div className="relative flex min-h-screen w-full">
-        {/* SIDEBAR */}
-        <aside className="hidden md:flex w-64 m-4 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 flex-col justify-between p-4">
-          <div>
-            <div className="flex items-center gap-2.5 px-2 pb-6">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-teal-400/30 to-cyan-500/10 border border-teal-400/30">
-                <Sparkles className="h-4 w-4 text-teal-300" />
-              </div>
-              <span className="text-base font-semibold tracking-tight text-slate-100">AyahMirror</span>
-            </div>
+        {/* Streak chip */}
+        <div className="mt-4 flex gap-2 flex-wrap justify-center">
+          <span
+            className={`rounded-full border px-3 py-1 text-xs ${
+              isLight
+                ? "border-teal-400/40 bg-teal-50 text-teal-700"
+                : "border-teal-400/30 bg-teal-500/10 text-teal-200"
+            }`}
+          >
+            🔥 {streak}-day streak
+          </span>
+          <span
+            className={`rounded-full border px-3 py-1 text-xs ${
+              isLight
+                ? "border-slate-300 bg-white text-slate-700"
+                : "border-white/10 bg-white/5 text-slate-200"
+            }`}
+          >
+            {totalReflections} reflections
+          </span>
+        </div>
+      </section>
 
-            <nav className="flex flex-col gap-1">
-              {NAV_ITEMS.map((item) => {
-                const Icon = item.icon;
-                const isActive = item.key === "home";
-                return (
-                  <Link
-                    key={item.key}
-                    to={item.to}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
-                      isActive
-                        ? "bg-gradient-to-r from-teal-500/20 to-transparent border-l-2 border-teal-400 text-teal-300"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-white/5 border-l-2 border-transparent"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
-
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <Waves className="h-4 w-4 text-teal-400 mb-2" />
-            <div className="text-sm font-medium text-slate-100">Mirissa, Sri Lanka</div>
-            <div className="mt-1 text-xs text-slate-400">Peace. Purpose. Presence.</div>
-          </div>
-        </aside>
-
-        {/* MAIN */}
-        <div className="flex-1 flex flex-col px-5 py-6 sm:px-8 sm:py-8">
-          {/* HEADER */}
-          <header className="flex items-center justify-between gap-4">
-            <div className="md:hidden flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-teal-300" />
-              <span className="text-base font-semibold">AyahMirror</span>
-            </div>
-
-            <div className="hidden md:flex flex-1 justify-center">
-              <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs text-slate-300 backdrop-blur-md">
-                <Sparkles className="h-3.5 w-3.5 text-teal-300" />
-                Quranic Wellness Mirror
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button className="text-slate-400 hover:text-teal-300 transition" aria-label="Theme">
-                <Sun className="h-4 w-4" />
-              </button>
-              <button className="relative text-slate-400 hover:text-teal-300 transition" aria-label="Notifications">
-                <Bell className="h-4 w-4" />
-                <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-teal-400" />
-              </button>
-              <div className="h-5 w-px bg-white/10" />
-              <button
-                onClick={handleSignOut}
-                className="flex items-center gap-2 text-slate-400 hover:text-slate-100 transition"
-                aria-label="Sign out"
-              >
-                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-teal-400/40 to-cyan-600/30 border border-white/10 flex items-center justify-center">
-                  <LogOut className="h-3.5 w-3.5 text-slate-200" />
-                </div>
-                <ChevronDown className="h-3 w-3" />
-              </button>
-            </div>
-          </header>
-
-          {/* HERO */}
-          <section className="mt-8 sm:mt-12 flex flex-col items-center text-center">
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-teal-400 drop-shadow-[0_0_15px_rgba(45,212,191,0.5)]">
-              AyahMirror
-            </h1>
-            <div className="mt-3 flex items-center gap-2 text-teal-400/60">
-              <span className="h-px w-12 bg-teal-400/30" />
-              <Sparkles className="h-3 w-3" />
-              <span className="h-px w-12 bg-teal-400/30" />
-            </div>
-            <p className="mt-4 text-base sm:text-lg text-teal-100/80">
-              How is your <span className="text-teal-300">soul</span> feeling in this moment?
-            </p>
-          </section>
-
-          {/* MAIN CARD */}
-          <div className="mt-8 flex flex-col items-center">
-            {view === "REMEDY_STATE" && remedy ? (
-              <article className="w-full max-w-3xl rounded-3xl bg-white/5 backdrop-blur-xl border border-teal-500/30 p-6 sm:p-8 shadow-[0_8px_32px_0_rgba(15,118,110,0.2)] relative overflow-hidden">
-                <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-teal-500/10 blur-3xl" />
-
-                <div className="flex items-center justify-between gap-3 relative">
-                  <div className="flex items-center gap-2 rounded-full border border-teal-400/40 bg-teal-500/10 px-4 py-1.5 text-xs sm:text-sm font-medium text-teal-300 shadow-[0_0_20px_rgba(45,212,191,0.2)]">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    {verse
-                      ? `${verse.surahNameEn} (${verse.surahNameTranslated}) • ${remedy.surah}:${remedy.ayah}`
-                      : `Surah ${remedy.surah} • Ayah ${remedy.ayah}`}
-                  </div>
-                  <button
-                    onClick={toggleBookmark}
-                    disabled={bookmarkBusy}
-                    className="text-slate-300 hover:text-teal-300 transition disabled:opacity-50"
-                    aria-label="Bookmark"
-                  >
-                    {bookmarked ? (
-                      <BookmarkCheck className="h-5 w-5 text-teal-400" />
-                    ) : (
-                      <Bookmark className="h-5 w-5" />
-                    )}
-                  </button>
-                </div>
-
-                {/* Quran verse (Arabic + translation + audio) — Quran Foundation Content API */}
-                <div className="mt-6 rounded-2xl border border-teal-400/20 bg-[#031a1a]/40 p-5 sm:p-6">
-                  {verseLoading && !verse ? (
-                    <div className="flex items-center gap-2 text-sm text-teal-300/70">
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Loading verse from Quran Foundation…
-                    </div>
-                  ) : verse ? (
-                    <>
-                      <p
-                        dir="rtl"
-                        lang="ar"
-                        className="text-right text-2xl sm:text-4xl leading-[2.4] text-white font-[Amiri,'Scheherazade_New',serif]"
-                      >
-                        {verse.arabic}
-                      </p>
-                      <p className="mt-4 text-sm sm:text-base text-slate-200 leading-relaxed">
-                        “{verse.translation}”
-                      </p>
-                      <div className="mt-3 flex items-center justify-between gap-3">
-                        <span className="text-[11px] uppercase tracking-wide text-teal-400/60">
-                          — {verse.translationAuthor}
-                        </span>
-                        {verse.audioUrl && (
-                          <button
-                            onClick={() => {
-                              const el = document.getElementById("ayah-audio") as HTMLAudioElement | null;
-                              if (!el) return;
-                              if (audioPlaying) {
-                                el.pause();
-                              } else {
-                                void el.play();
-                              }
-                            }}
-                            className="flex items-center gap-2 rounded-full border border-teal-400/40 bg-teal-500/10 px-3 py-1.5 text-xs text-teal-200 hover:bg-teal-500/20 transition"
-                          >
-                            {audioPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                            {audioPlaying ? "Pause" : "Listen"}
-                          </button>
-                        )}
-                      </div>
-                      {verse.audioUrl && (
-                        <audio
-                          id="ayah-audio"
-                          src={verse.audioUrl}
-                          onPlay={() => setAudioPlaying(true)}
-                          onPause={() => setAudioPlaying(false)}
-                          onEnded={() => setAudioPlaying(false)}
-                          preload="none"
-                        />
-                      )}
-                    </>
-                  ) : (
-                    <div className="text-sm text-slate-400">Verse text unavailable right now.</div>
-                  )}
-                </div>
-
-                <div className="mt-6 relative">
-                  <Quote className="h-7 w-7 text-teal-400/70" />
-                  <blockquote className="mt-3 font-serif italic text-2xl md:text-3xl text-white leading-snug">
-                    {remedy.contextMessage}
-                  </blockquote>
-                </div>
-
-                <div className="my-6 flex items-center justify-center gap-3 text-teal-500/40">
-                  <span className="h-px w-20 bg-teal-500/20" />
-                  <span className="text-xs">✦</span>
-                  <span className="h-px w-20 bg-teal-500/20" />
-                </div>
-
-
-                <div className="bg-[#042f2e]/50 border border-teal-500/20 rounded-xl p-5 flex items-start gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-teal-400/40 bg-teal-500/10 shadow-[0_0_20px_rgba(45,212,191,0.25)]">
-                    <Pencil className="h-5 w-5 text-teal-300" />
-                  </div>
-                  <div>
-                    <div className="text-sm sm:text-base font-semibold text-teal-300">
-                      Your 24-Hour Micro-Prescription
-                    </div>
-                    <p className="mt-1 text-sm sm:text-base text-slate-200 leading-relaxed">
-                      {remedy.prescription}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-6 flex justify-center">
-                  <button
-                    onClick={handleReset}
-                    className="rounded-full border border-white/10 bg-white/5 px-5 py-2 text-xs text-slate-300 hover:text-teal-300 transition"
-                  >
-                    Reflect on something else
-                  </button>
-                </div>
-              </article>
-            ) : (
-              <article className="w-full max-w-3xl rounded-3xl bg-white/5 backdrop-blur-xl border border-teal-500/30 p-6 sm:p-8 shadow-[0_8px_32px_0_rgba(15,118,110,0.2)] relative overflow-hidden">
-                <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-teal-500/10 blur-3xl" />
-
-                <div className="flex items-center gap-2 rounded-full border border-teal-400/40 bg-teal-500/10 px-4 py-1.5 w-fit text-xs sm:text-sm font-medium text-teal-300 shadow-[0_0_20px_rgba(45,212,191,0.2)]">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Choose what your heart is carrying
-                </div>
-
-                <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {EMOTIONS.map((e) => {
-                    const isSelected = selected === e.key;
-                    const Icon = e.icon;
-                    return (
-                      <button
-                        key={e.key}
-                        onClick={() => setSelected(e.key)}
-                        className={`group flex flex-col items-start gap-2 rounded-2xl border p-4 text-left transition backdrop-blur-md ${
-                          isSelected
-                            ? "border-teal-400/60 bg-teal-500/10 shadow-[0_0_25px_rgba(45,212,191,0.25)]"
-                            : "border-white/10 bg-white/5 hover:border-teal-400/30"
-                        }`}
-                      >
-                        <div
-                          className={`flex h-9 w-9 items-center justify-center rounded-lg border ${
-                            isSelected
-                              ? "border-teal-400/50 bg-teal-500/20 text-teal-200"
-                              : "border-white/10 bg-white/5 text-teal-300/70"
-                          }`}
-                        >
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <div className="text-sm font-semibold text-slate-100">{e.label}</div>
-                          <div className="text-[11px] text-slate-400 leading-snug">{e.blurb}</div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="mt-6">
-                  <textarea
-                    value={rawInput}
-                    onChange={(ev) => setRawInput(ev.target.value.slice(0, 500))}
-                    maxLength={500}
-                    rows={3}
-                    placeholder="Say a little more (optional)... I keep waking up at 3am and my chest feels tight."
-                    className="w-full resize-none rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-relaxed text-slate-100 placeholder:text-slate-500 backdrop-blur-md focus:border-teal-400/50 focus:outline-none focus:ring-1 focus:ring-teal-400/30"
-                  />
-                  <div className="mt-1 flex justify-end text-xs text-slate-500">
-                    <span className={overLimit ? "text-rose-400" : ""}>{charCount} / 500</span>
-                  </div>
-                </div>
-              </article>
-            )}
-
-            {/* BOTTOM ACTION BAR */}
-            <form
-              onSubmit={handleQuickSubmit}
-              className="mt-6 w-full max-w-2xl bg-white/5 backdrop-blur-md border border-white/10 rounded-full flex items-center px-5 py-3 shadow-[0_0_30px_rgba(15,118,110,0.1)]"
+      {/* DAILY AYAH */}
+      {daily && (
+        <section className={`mt-8 max-w-3xl mx-auto w-full rounded-3xl border p-5 sm:p-6 backdrop-blur-xl ${cardBg}`}>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div
+              className={`flex items-center gap-2 text-xs uppercase tracking-wide ${
+                isLight ? "text-teal-700" : "text-teal-300"
+              }`}
             >
-              <Heart className="h-4 w-4 text-teal-300 shrink-0" />
-              <input
-                type="text"
-                value={rawInput}
-                onChange={(ev) => setRawInput(ev.target.value.slice(0, 500))}
-                placeholder={selected ? "Press → to reveal your verse" : "Pick a feeling above, then press →"}
-                className="flex-1 mx-3 bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
-              />
+              <Sparkles className="h-3.5 w-3.5" />
+              Today's Verse · {daily.surahNameEn} ({daily.verseKey})
+            </div>
+            {daily.audioUrl && (
               <button
-                type="submit"
-                disabled={!canSubmit}
-                aria-label="Reveal verse"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-teal-400/40 bg-teal-500/20 text-teal-200 transition hover:bg-teal-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={() => {
+                  const el = document.getElementById("daily-audio") as HTMLAudioElement | null;
+                  if (!el) return;
+                  if (dailyPlaying) el.pause();
+                  else void el.play();
+                }}
+                className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition ${
+                  isLight
+                    ? "border-teal-400/50 bg-teal-50 text-teal-700 hover:bg-teal-100"
+                    : "border-teal-400/40 bg-teal-500/10 text-teal-200 hover:bg-teal-500/20"
+                }`}
               >
-                {loading ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
+                {dailyPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                {dailyPlaying ? "Pause" : "Listen"}
+              </button>
+            )}
+          </div>
+          <p
+            dir="rtl"
+            lang="ar"
+            className={`mt-4 text-right text-2xl sm:text-3xl leading-[2.4] font-[Amiri,'Scheherazade_New',serif] ${
+              isLight ? "text-slate-900" : "text-white"
+            }`}
+          >
+            {daily.arabic}
+          </p>
+          <p
+            className={`mt-3 text-sm sm:text-base leading-relaxed ${
+              isLight ? "text-slate-700" : "text-slate-200"
+            }`}
+          >
+            "{daily.translation}"
+          </p>
+          {daily.audioUrl && (
+            <audio
+              id="daily-audio"
+              src={daily.audioUrl}
+              onPlay={() => setDailyPlaying(true)}
+              onPause={() => setDailyPlaying(false)}
+              onEnded={() => setDailyPlaying(false)}
+              preload="none"
+            />
+          )}
+        </section>
+      )}
+
+      {/* MAIN CARD */}
+      <div className="mt-8 flex flex-col items-center">
+        {view === "REMEDY_STATE" && remedy ? (
+          <article
+            className={`w-full max-w-3xl rounded-3xl border p-5 sm:p-8 backdrop-blur-xl relative overflow-hidden ${cardBg}`}
+          >
+            <div className="flex items-center justify-between gap-3 relative flex-wrap">
+              <div
+                className={`flex items-center gap-2 rounded-full border px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium ${
+                  isLight
+                    ? "border-teal-400/50 bg-teal-50 text-teal-700"
+                    : "border-teal-400/40 bg-teal-500/10 text-teal-300"
+                }`}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {verse
+                  ? `${verse.surahNameEn} • ${remedy.surah}:${remedy.ayah}`
+                  : `Surah ${remedy.surah} • Ayah ${remedy.ayah}`}
+              </div>
+              <button
+                onClick={toggleBookmark}
+                disabled={bookmarkBusy}
+                className={`transition disabled:opacity-50 ${
+                  isLight ? "text-slate-600 hover:text-teal-700" : "text-slate-300 hover:text-teal-300"
+                }`}
+                aria-label="Bookmark"
+              >
+                {bookmarked ? (
+                  <BookmarkCheck className={`h-5 w-5 ${isLight ? "text-teal-600" : "text-teal-400"}`} />
                 ) : (
-                  <ArrowRight className="h-4 w-4" />
+                  <Bookmark className="h-5 w-5" />
                 )}
               </button>
+            </div>
+
+            <div
+              className={`mt-6 rounded-2xl border p-4 sm:p-6 ${
+                isLight ? "border-teal-200 bg-teal-50/50" : "border-teal-400/20 bg-[#031a1a]/40"
+              }`}
+            >
+              {verseLoading && !verse ? (
+                <div className={`flex items-center gap-2 text-sm ${isLight ? "text-teal-700" : "text-teal-300/70"}`}>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Loading verse from Quran Foundation…
+                </div>
+              ) : verse ? (
+                <>
+                  <p
+                    dir="rtl"
+                    lang="ar"
+                    className={`text-right text-2xl sm:text-4xl leading-[2.4] font-[Amiri,'Scheherazade_New',serif] ${
+                      isLight ? "text-slate-900" : "text-white"
+                    }`}
+                  >
+                    {verse.arabic}
+                  </p>
+                  <p className={`mt-4 text-sm sm:text-base leading-relaxed ${isLight ? "text-slate-700" : "text-slate-200"}`}>
+                    "{verse.translation}"
+                  </p>
+                  <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
+                    <span className={`text-[11px] uppercase tracking-wide ${isLight ? "text-teal-700/70" : "text-teal-400/60"}`}>
+                      — {verse.translationAuthor}
+                    </span>
+                    {verse.audioUrl && (
+                      <button
+                        onClick={() => {
+                          const el = document.getElementById("ayah-audio") as HTMLAudioElement | null;
+                          if (!el) return;
+                          if (audioPlaying) el.pause();
+                          else void el.play();
+                        }}
+                        className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition ${
+                          isLight
+                            ? "border-teal-400/50 bg-teal-50 text-teal-700 hover:bg-teal-100"
+                            : "border-teal-400/40 bg-teal-500/10 text-teal-200 hover:bg-teal-500/20"
+                        }`}
+                      >
+                        {audioPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                        {audioPlaying ? "Pause" : "Listen"}
+                      </button>
+                    )}
+                  </div>
+                  {verse.audioUrl && (
+                    <audio
+                      id="ayah-audio"
+                      src={verse.audioUrl}
+                      onPlay={() => setAudioPlaying(true)}
+                      onPause={() => setAudioPlaying(false)}
+                      onEnded={() => setAudioPlaying(false)}
+                      preload="none"
+                    />
+                  )}
+                </>
+              ) : (
+                <div className="text-sm opacity-60">Verse text unavailable.</div>
+              )}
+            </div>
+
+            <div className="mt-6 relative">
+              <Quote className={`h-6 w-6 ${isLight ? "text-teal-600/70" : "text-teal-400/70"}`} />
+              <blockquote
+                className={`mt-3 font-serif italic text-xl sm:text-2xl md:text-3xl leading-snug ${
+                  isLight ? "text-slate-900" : "text-white"
+                }`}
+              >
+                {remedy.contextMessage}
+              </blockquote>
+            </div>
+
+            <div className="my-6 flex items-center justify-center gap-3 text-teal-500/40">
+              <span className="h-px w-16 sm:w-20 bg-teal-500/20" />
+              <span className="text-xs">✦</span>
+              <span className="h-px w-16 sm:w-20 bg-teal-500/20" />
+            </div>
+
+            <div
+              className={`rounded-2xl border p-4 sm:p-5 ${
+                isLight ? "border-amber-300 bg-amber-50" : "border-amber-400/30 bg-amber-400/10"
+              }`}
+            >
+              <div className={`text-[10px] font-semibold uppercase tracking-[0.25em] mb-1 ${isLight ? "text-amber-700" : "text-amber-300"}`}>
+                Prescription
+              </div>
+              <p className={`text-sm sm:text-base font-medium leading-relaxed ${isLight ? "text-amber-900" : "text-amber-50"}`}>
+                {remedy.prescription}
+              </p>
+            </div>
+
+            {/* Reflection */}
+            <form onSubmit={submitReflection} className="mt-6">
+              <label className={`text-xs uppercase tracking-wide ${isLight ? "text-slate-600" : "text-slate-400"}`}>
+                One sentence about this moment ({privacyPublic ? "public" : "private"})
+              </label>
+              <div className="mt-2 flex gap-2 flex-col sm:flex-row">
+                <input
+                  value={reflectionText}
+                  onChange={(e) => setReflectionText(e.target.value.slice(0, 280))}
+                  placeholder="What did this verse stir in you?"
+                  className={`flex-1 rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-teal-400/40 ${
+                    isLight
+                      ? "border-slate-300 bg-white text-slate-900 placeholder:text-slate-400"
+                      : "border-white/10 bg-white/5 text-slate-100 placeholder:text-slate-500"
+                  }`}
+                />
+                <button
+                  type="submit"
+                  disabled={!reflectionText.trim() || submittingReflection}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-white text-sm font-medium px-4 py-2.5 disabled:opacity-50"
+                >
+                  {submittingReflection ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
+                  Save
+                </button>
+              </div>
             </form>
 
-            {/* FOOTER QUOTE */}
-            <footer className="mt-10 text-center px-4">
-              <p className="text-xs sm:text-sm text-teal-600 italic">
-                <span className="text-teal-500">“</span> And We have certainly made the Quran easy for remembrance,
-                so is there any who will remember? <span className="text-teal-500">”</span>
-              </p>
-              <p className="mt-1 text-xs text-teal-700">— Surah Al-Qamar (54:17)</p>
-            </footer>
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={handleReset}
+                className={`text-xs underline-offset-4 hover:underline ${isLight ? "text-slate-600" : "text-slate-400"}`}
+              >
+                ← Choose another emotion
+              </button>
+            </div>
+          </article>
+        ) : (
+          <div className={`w-full max-w-3xl rounded-3xl border p-5 sm:p-8 backdrop-blur-xl ${cardBg}`}>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {EMOTIONS.map((e) => {
+                const Icon = e.icon;
+                const active = selected === e.key;
+                return (
+                  <button
+                    key={e.key}
+                    onClick={() => setSelected(e.key)}
+                    className={`rounded-2xl border p-4 text-left transition ${
+                      active
+                        ? isLight
+                          ? "border-teal-500 bg-teal-50 shadow-[0_0_20px_rgba(45,212,191,0.2)]"
+                          : "border-teal-400 bg-teal-500/10 shadow-[0_0_20px_rgba(45,212,191,0.25)]"
+                        : isLight
+                        ? "border-slate-200 hover:border-teal-400/50 bg-white"
+                        : "border-white/10 hover:border-teal-400/30 bg-white/5"
+                    }`}
+                  >
+                    <Icon className={`h-5 w-5 ${active ? (isLight ? "text-teal-700" : "text-teal-300") : isLight ? "text-slate-500" : "text-slate-400"}`} />
+                    <div className={`mt-2 text-sm font-medium ${isLight ? "text-slate-900" : "text-slate-100"}`}>
+                      {e.label}
+                    </div>
+                    <div className={`mt-0.5 text-xs ${isLight ? "text-slate-500" : "text-slate-400"}`}>
+                      {e.blurb}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <textarea
+              value={rawInput}
+              onChange={(e) => setRawInput(e.target.value)}
+              placeholder="Optional: what's happening in your heart? (max 500 chars)"
+              rows={3}
+              className={`mt-4 w-full rounded-xl border px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-teal-400/40 ${
+                isLight
+                  ? "border-slate-300 bg-white text-slate-900 placeholder:text-slate-400"
+                  : "border-white/10 bg-white/5 text-slate-100 placeholder:text-slate-500"
+              }`}
+            />
+            <div className={`mt-1 text-right text-xs ${overLimit ? "text-rose-400" : isLight ? "text-slate-500" : "text-slate-500"}`}>
+              {charCount}/500
+            </div>
+
+            <button
+              onClick={handleSubmit}
+              disabled={!canSubmit}
+              className="mt-4 w-full flex items-center justify-center gap-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-white text-sm font-medium py-3 disabled:opacity-50"
+            >
+              {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Find my verse
+            </button>
           </div>
-        </div>
+        )}
       </div>
-    </main>
+
+      <footer className={`mt-12 text-center text-xs ${isLight ? "text-teal-700/70" : "text-teal-600"}`}>
+        "And We have certainly made the Quran easy for remembrance, so is there any who will remember?" — Surah Al-Qamar (54:17)
+      </footer>
+    </AppShell>
   );
 }

@@ -9,15 +9,58 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TodayRouteImport } from './routes/today'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ReflectionsRouteImport } from './routes/reflections'
+import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as JourneyRouteImport } from './routes/journey'
+import { Route as ExplorerRouteImport } from './routes/explorer'
+import { Route as ChatRouteImport } from './routes/chat'
 import { Route as BookmarksRouteImport } from './routes/bookmarks'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ExplorerSurahIdRouteImport } from './routes/explorer.$surahId'
 import { Route as ApiMatchEmotionRouteImport } from './routes/api/match-emotion'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 
+const TodayRoute = TodayRouteImport.update({
+  id: '/today',
+  path: '/today',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReflectionsRoute = ReflectionsRouteImport.update({
+  id: '/reflections',
+  path: '/reflections',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProgressRoute = ProgressRouteImport.update({
+  id: '/progress',
+  path: '/progress',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JourneyRoute = JourneyRouteImport.update({
+  id: '/journey',
+  path: '/journey',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExplorerRoute = ExplorerRouteImport.update({
+  id: '/explorer',
+  path: '/explorer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatRoute = ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BookmarksRoute = BookmarksRouteImport.update({
@@ -29,6 +72,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ExplorerSurahIdRoute = ExplorerSurahIdRouteImport.update({
+  id: '/$surahId',
+  path: '/$surahId',
+  getParentRoute: () => ExplorerRoute,
 } as any)
 const ApiMatchEmotionRoute = ApiMatchEmotionRouteImport.update({
   id: '/api/match-emotion',
@@ -44,54 +92,168 @@ const ApiChatRoute = ApiChatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/bookmarks': typeof BookmarksRoute
+  '/chat': typeof ChatRoute
+  '/explorer': typeof ExplorerRouteWithChildren
+  '/journey': typeof JourneyRoute
   '/login': typeof LoginRoute
+  '/progress': typeof ProgressRoute
+  '/reflections': typeof ReflectionsRoute
+  '/settings': typeof SettingsRoute
+  '/today': typeof TodayRoute
   '/api/chat': typeof ApiChatRoute
   '/api/match-emotion': typeof ApiMatchEmotionRoute
+  '/explorer/$surahId': typeof ExplorerSurahIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/bookmarks': typeof BookmarksRoute
+  '/chat': typeof ChatRoute
+  '/explorer': typeof ExplorerRouteWithChildren
+  '/journey': typeof JourneyRoute
   '/login': typeof LoginRoute
+  '/progress': typeof ProgressRoute
+  '/reflections': typeof ReflectionsRoute
+  '/settings': typeof SettingsRoute
+  '/today': typeof TodayRoute
   '/api/chat': typeof ApiChatRoute
   '/api/match-emotion': typeof ApiMatchEmotionRoute
+  '/explorer/$surahId': typeof ExplorerSurahIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/bookmarks': typeof BookmarksRoute
+  '/chat': typeof ChatRoute
+  '/explorer': typeof ExplorerRouteWithChildren
+  '/journey': typeof JourneyRoute
   '/login': typeof LoginRoute
+  '/progress': typeof ProgressRoute
+  '/reflections': typeof ReflectionsRoute
+  '/settings': typeof SettingsRoute
+  '/today': typeof TodayRoute
   '/api/chat': typeof ApiChatRoute
   '/api/match-emotion': typeof ApiMatchEmotionRoute
+  '/explorer/$surahId': typeof ExplorerSurahIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/bookmarks' | '/login' | '/api/chat' | '/api/match-emotion'
+  fullPaths:
+    | '/'
+    | '/bookmarks'
+    | '/chat'
+    | '/explorer'
+    | '/journey'
+    | '/login'
+    | '/progress'
+    | '/reflections'
+    | '/settings'
+    | '/today'
+    | '/api/chat'
+    | '/api/match-emotion'
+    | '/explorer/$surahId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/bookmarks' | '/login' | '/api/chat' | '/api/match-emotion'
+  to:
+    | '/'
+    | '/bookmarks'
+    | '/chat'
+    | '/explorer'
+    | '/journey'
+    | '/login'
+    | '/progress'
+    | '/reflections'
+    | '/settings'
+    | '/today'
+    | '/api/chat'
+    | '/api/match-emotion'
+    | '/explorer/$surahId'
   id:
     | '__root__'
     | '/'
     | '/bookmarks'
+    | '/chat'
+    | '/explorer'
+    | '/journey'
     | '/login'
+    | '/progress'
+    | '/reflections'
+    | '/settings'
+    | '/today'
     | '/api/chat'
     | '/api/match-emotion'
+    | '/explorer/$surahId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BookmarksRoute: typeof BookmarksRoute
+  ChatRoute: typeof ChatRoute
+  ExplorerRoute: typeof ExplorerRouteWithChildren
+  JourneyRoute: typeof JourneyRoute
   LoginRoute: typeof LoginRoute
+  ProgressRoute: typeof ProgressRoute
+  ReflectionsRoute: typeof ReflectionsRoute
+  SettingsRoute: typeof SettingsRoute
+  TodayRoute: typeof TodayRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiMatchEmotionRoute: typeof ApiMatchEmotionRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/today': {
+      id: '/today'
+      path: '/today'
+      fullPath: '/today'
+      preLoaderRoute: typeof TodayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reflections': {
+      id: '/reflections'
+      path: '/reflections'
+      fullPath: '/reflections'
+      preLoaderRoute: typeof ReflectionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/progress': {
+      id: '/progress'
+      path: '/progress'
+      fullPath: '/progress'
+      preLoaderRoute: typeof ProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/journey': {
+      id: '/journey'
+      path: '/journey'
+      fullPath: '/journey'
+      preLoaderRoute: typeof JourneyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/explorer': {
+      id: '/explorer'
+      path: '/explorer'
+      fullPath: '/explorer'
+      preLoaderRoute: typeof ExplorerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/bookmarks': {
@@ -107,6 +269,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/explorer/$surahId': {
+      id: '/explorer/$surahId'
+      path: '/$surahId'
+      fullPath: '/explorer/$surahId'
+      preLoaderRoute: typeof ExplorerSurahIdRouteImport
+      parentRoute: typeof ExplorerRoute
     }
     '/api/match-emotion': {
       id: '/api/match-emotion'
@@ -125,13 +294,42 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ExplorerRouteChildren {
+  ExplorerSurahIdRoute: typeof ExplorerSurahIdRoute
+}
+
+const ExplorerRouteChildren: ExplorerRouteChildren = {
+  ExplorerSurahIdRoute: ExplorerSurahIdRoute,
+}
+
+const ExplorerRouteWithChildren = ExplorerRoute._addFileChildren(
+  ExplorerRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BookmarksRoute: BookmarksRoute,
+  ChatRoute: ChatRoute,
+  ExplorerRoute: ExplorerRouteWithChildren,
+  JourneyRoute: JourneyRoute,
   LoginRoute: LoginRoute,
+  ProgressRoute: ProgressRoute,
+  ReflectionsRoute: ReflectionsRoute,
+  SettingsRoute: SettingsRoute,
+  TodayRoute: TodayRoute,
   ApiChatRoute: ApiChatRoute,
   ApiMatchEmotionRoute: ApiMatchEmotionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
