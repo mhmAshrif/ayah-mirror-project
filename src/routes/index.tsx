@@ -22,11 +22,15 @@ import {
   ArrowRight,
   Waves,
   ChevronDown,
+  Play,
+  Pause,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import oceanBg from "@/assets/ocean-bg.png";
+import { useServerFn } from "@tanstack/react-start";
+import { getVerseContent, type VerseContent } from "@/lib/quran.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
