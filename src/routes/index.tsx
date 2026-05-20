@@ -144,7 +144,19 @@ function Index() {
       const data = (await res.json()) as Remedy;
       setRemedy(data);
       setBookmarked(false);
+      setVerse(null);
+      setAudioPlaying(false);
       setView("REMEDY_STATE");
+
+      // Fetch real Quran content (Quran Foundation Content API)
+      setVerseLoading(true);
+      fetchVerse({ data: { surah: data.surah, ayah: data.ayah } })
+        .then((v) => setVerse(v))
+        .catch((e) => {
+          console.error("verse fetch failed", e);
+          toast.error("Couldn't load the Quran verse text.");
+        })
+        .finally(() => setVerseLoading(false));
 
       if (userId) {
         try {
@@ -171,6 +183,8 @@ function Index() {
   const handleReset = () => {
     setView("INPUT_STATE");
     setRemedy(null);
+    setVerse(null);
+    setAudioPlaying(false);
     setSelected(null);
     setRawInput("");
     setBookmarked(false);
