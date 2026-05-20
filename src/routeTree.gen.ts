@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as BookmarksRouteImport } from './routes/bookmarks'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiMatchEmotionRouteImport } from './routes/api/match-emotion'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -34,17 +35,24 @@ const ApiMatchEmotionRoute = ApiMatchEmotionRouteImport.update({
   path: '/api/match-emotion',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/bookmarks': typeof BookmarksRoute
   '/login': typeof LoginRoute
+  '/api/chat': typeof ApiChatRoute
   '/api/match-emotion': typeof ApiMatchEmotionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/bookmarks': typeof BookmarksRoute
   '/login': typeof LoginRoute
+  '/api/chat': typeof ApiChatRoute
   '/api/match-emotion': typeof ApiMatchEmotionRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,28 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/bookmarks': typeof BookmarksRoute
   '/login': typeof LoginRoute
+  '/api/chat': typeof ApiChatRoute
   '/api/match-emotion': typeof ApiMatchEmotionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/bookmarks' | '/login' | '/api/match-emotion'
+  fullPaths: '/' | '/bookmarks' | '/login' | '/api/chat' | '/api/match-emotion'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/bookmarks' | '/login' | '/api/match-emotion'
-  id: '__root__' | '/' | '/bookmarks' | '/login' | '/api/match-emotion'
+  to: '/' | '/bookmarks' | '/login' | '/api/chat' | '/api/match-emotion'
+  id:
+    | '__root__'
+    | '/'
+    | '/bookmarks'
+    | '/login'
+    | '/api/chat'
+    | '/api/match-emotion'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BookmarksRoute: typeof BookmarksRoute
   LoginRoute: typeof LoginRoute
+  ApiChatRoute: typeof ApiChatRoute
   ApiMatchEmotionRoute: typeof ApiMatchEmotionRoute
 }
 
@@ -99,6 +115,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMatchEmotionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -106,8 +129,19 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BookmarksRoute: BookmarksRoute,
   LoginRoute: LoginRoute,
+  ApiChatRoute: ApiChatRoute,
   ApiMatchEmotionRoute: ApiMatchEmotionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
