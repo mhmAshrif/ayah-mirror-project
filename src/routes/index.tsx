@@ -93,8 +93,12 @@ function Index() {
   const [loading, setLoading] = useState(false);
 
   const [remedy, setRemedy] = useState<Remedy | null>(null);
+  const [verse, setVerse] = useState<VerseContent | null>(null);
+  const [verseLoading, setVerseLoading] = useState(false);
+  const [audioPlaying, setAudioPlaying] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [bookmarkBusy, setBookmarkBusy] = useState(false);
+  const fetchVerse = useServerFn(getVerseContent);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
