@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      bookmark_collections: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       emotion_logs: {
         Row: {
           ayah_number: number
@@ -50,32 +71,142 @@ export type Database = {
         }
         Relationships: []
       }
+      milestones: {
+        Row: {
+          description: string | null
+          id: string
+          kind: string
+          occurred_at: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          kind: string
+          occurred_at?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          kind?: string
+          occurred_at?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      reflections: {
+        Row: {
+          ayah_number: number | null
+          content: string
+          created_at: string
+          id: string
+          is_public: boolean
+          surah_id: number | null
+          user_id: string
+        }
+        Insert: {
+          ayah_number?: number | null
+          content: string
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          surah_id?: number | null
+          user_id: string
+        }
+        Update: {
+          ayah_number?: number | null
+          content?: string
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          surah_id?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       spiritual_bookmarks: {
         Row: {
+          arabic: string | null
           ayah_number: number
+          collection_id: string | null
           context_message: string | null
           created_at: string
           id: string
           prescription: string | null
           surah_id: number
+          surah_name: string | null
+          translation: string | null
+          translation_author: string | null
           user_id: string
         }
         Insert: {
+          arabic?: string | null
           ayah_number: number
+          collection_id?: string | null
           context_message?: string | null
           created_at?: string
           id?: string
           prescription?: string | null
           surah_id: number
+          surah_name?: string | null
+          translation?: string | null
+          translation_author?: string | null
           user_id: string
         }
         Update: {
+          arabic?: string | null
           ayah_number?: number
+          collection_id?: string | null
           context_message?: string | null
           created_at?: string
           id?: string
           prescription?: string | null
           surah_id?: number
+          surah_name?: string | null
+          translation?: string | null
+          translation_author?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spiritual_bookmarks_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "bookmark_collections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_preferences: {
+        Row: {
+          default_public: boolean
+          life_stage: string | null
+          reciter_id: number
+          theme: string
+          translation_id: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          default_public?: boolean
+          life_stage?: string | null
+          reciter_id?: number
+          theme?: string
+          translation_id?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          default_public?: boolean
+          life_stage?: string | null
+          reciter_id?: number
+          theme?: string
+          translation_id?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
