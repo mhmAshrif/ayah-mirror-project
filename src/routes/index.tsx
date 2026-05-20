@@ -22,11 +22,15 @@ import {
   ArrowRight,
   Waves,
   ChevronDown,
+  Play,
+  Pause,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import oceanBg from "@/assets/ocean-bg.png";
+import { useServerFn } from "@tanstack/react-start";
+import { getVerseContent, type VerseContent } from "@/lib/quran.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -89,8 +93,12 @@ function Index() {
   const [loading, setLoading] = useState(false);
 
   const [remedy, setRemedy] = useState<Remedy | null>(null);
+  const [verse, setVerse] = useState<VerseContent | null>(null);
+  const [verseLoading, setVerseLoading] = useState(false);
+  const [audioPlaying, setAudioPlaying] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [bookmarkBusy, setBookmarkBusy] = useState(false);
+  const fetchVerse = useServerFn(getVerseContent);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
@@ -136,7 +144,19 @@ function Index() {
       const data = (await res.json()) as Remedy;
       setRemedy(data);
       setBookmarked(false);
+      setVerse(null);
+      setAudioPlaying(false);
       setView("REMEDY_STATE");
+
+      // Fetch real Quran content (Quran Foundation Content API)
+      setVerseLoading(true);
+      fetchVerse({ data: { surah: data.surah, ayah: data.ayah } })
+        .then((v) => setVerse(v))
+        .catch((e) => {
+          console.error("verse fetch failed", e);
+          toast.error("Couldn't load the Quran verse text.");
+        })
+        .finally(() => setVerseLoading(false));
 
       if (userId) {
         try {
@@ -163,6 +183,8 @@ function Index() {
   const handleReset = () => {
     setView("INPUT_STATE");
     setRemedy(null);
+    setVerse(null);
+    setAudioPlaying(false);
     setSelected(null);
     setRawInput("");
     setBookmarked(false);
@@ -328,7 +350,9 @@ function Index() {
                 <div className="flex items-center justify-between gap-3 relative">
                   <div className="flex items-center gap-2 rounded-full border border-teal-400/40 bg-teal-500/10 px-4 py-1.5 text-xs sm:text-sm font-medium text-teal-300 shadow-[0_0_20px_rgba(45,212,191,0.2)]">
                     <Sparkles className="h-3.5 w-3.5" />
-                    Spiritual Remedy: Surah {remedy.surah} • Ayah {remedy.ayah}
+                    {verse
+                      ? `${verse.surahNameEn} (${verse.surahNameTranslated}) • ${remedy.surah}:${remedy.ayah}`
+                      : `Surah ${remedy.surah} • Ayah ${remedy.ayah}`}
                   </div>
                   <button
                     onClick={toggleBookmark}
@@ -344,9 +368,66 @@ function Index() {
                   </button>
                 </div>
 
+                {/* Quran verse (Arabic + translation + audio) — Quran Foundation Content API */}
+                <div className="mt-6 rounded-2xl border border-teal-400/20 bg-[#031a1a]/40 p-5 sm:p-6">
+                  {verseLoading && !verse ? (
+                    <div className="flex items-center gap-2 text-sm text-teal-300/70">
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Loading verse from Quran Foundation…
+                    </div>
+                  ) : verse ? (
+                    <>
+                      <p
+                        dir="rtl"
+                        lang="ar"
+                        className="text-right text-2xl sm:text-4xl leading-[2.4] text-white font-[Amiri,'Scheherazade_New',serif]"
+                      >
+                        {verse.arabic}
+                      </p>
+                      <p className="mt-4 text-sm sm:text-base text-slate-200 leading-relaxed">
+                        “{verse.translation}”
+                      </p>
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <span className="text-[11px] uppercase tracking-wide text-teal-400/60">
+                          — {verse.translationAuthor}
+                        </span>
+                        {verse.audioUrl && (
+                          <button
+                            onClick={() => {
+                              const el = document.getElementById("ayah-audio") as HTMLAudioElement | null;
+                              if (!el) return;
+                              if (audioPlaying) {
+                                el.pause();
+                              } else {
+                                void el.play();
+                              }
+                            }}
+                            className="flex items-center gap-2 rounded-full border border-teal-400/40 bg-teal-500/10 px-3 py-1.5 text-xs text-teal-200 hover:bg-teal-500/20 transition"
+                          >
+                            {audioPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                            {audioPlaying ? "Pause" : "Listen"}
+                          </button>
+                        )}
+                      </div>
+                      {verse.audioUrl && (
+                        <audio
+                          id="ayah-audio"
+                          src={verse.audioUrl}
+                          onPlay={() => setAudioPlaying(true)}
+                          onPause={() => setAudioPlaying(false)}
+                          onEnded={() => setAudioPlaying(false)}
+                          preload="none"
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-sm text-slate-400">Verse text unavailable right now.</div>
+                  )}
+                </div>
+
                 <div className="mt-6 relative">
-                  <Quote className="h-8 w-8 text-teal-400/70" />
-                  <blockquote className="mt-3 font-serif italic text-3xl md:text-5xl text-white leading-snug">
+                  <Quote className="h-7 w-7 text-teal-400/70" />
+                  <blockquote className="mt-3 font-serif italic text-2xl md:text-3xl text-white leading-snug">
                     {remedy.contextMessage}
                   </blockquote>
                 </div>
@@ -356,6 +437,7 @@ function Index() {
                   <span className="text-xs">✦</span>
                   <span className="h-px w-20 bg-teal-500/20" />
                 </div>
+
 
                 <div className="bg-[#042f2e]/50 border border-teal-500/20 rounded-xl p-5 flex items-start gap-4">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-teal-400/40 bg-teal-500/10 shadow-[0_0_20px_rgba(45,212,191,0.25)]">
