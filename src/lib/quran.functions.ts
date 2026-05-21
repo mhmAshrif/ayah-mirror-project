@@ -467,3 +467,237 @@ export const getDailyVerse = createServerFn({ method: "GET" }).handler(
     };
   },
 );
+
+// ---------- Multi-Tafsir engine ----------
+
+export type TafsirResource = {
+  id: number;
+  name: string;
+  author: string;
+  language: string;
+  slug?: string;
+};
+
+export const listTafsirs = createServerFn({ method: "GET" }).handler(
+  async (): Promise<TafsirResource[]> => {
+    const res = await fetch(`${QURAN_API}/resources/tafsirs?language=en`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return [];
+    const j = (await res.json()) as {
+      tafsirs: Array<{
+        id: number;
+        name: string;
+        author_name: string;
+        language_name: string;
+        slug?: string;
+      }>;
+    };
+    return j.tafsirs.map((t) => ({
+      id: t.id,
+      name: t.name,
+      author: t.author_name,
+      language: t.language_name,
+      slug: t.slug,
+    }));
+  },
+);
+
+// ---------- Verse Context Window (prev + next) ----------
+
+export const getVerseContextWindow = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      surah: z.number().int().min(1).max(114),
+      ayah: z.number().int().min(1).max(286),
+      translationId: z.number().int().optional(),
+      radius: z.number().int().min(1).max(3).optional(),
+    }),
+  )
+  .handler(
+    async ({
+      data,
+    }): Promise<{
+      target: VerseContent;
+      before: VerseContent[];
+      after: VerseContent[];
+    }> => {
+      const translationId = data.translationId ?? DEFAULT_TRANSLATION_ID;
+      const radius = data.radius ?? 1;
+
+      // Look up chapter length first to clamp.
+      const cRes = await fetch(`${QURAN_API}/chapters/${data.surah}?language=en`, {
+        headers: { Accept: "application/json" },
+      });
+      if (!cRes.ok) throw new Error(`Chapter fetch failed: ${cRes.status}`);
+      const cJson = (await cRes.json()) as {
+        chapter: {
+          name_simple: string;
+          name_arabic: string;
+          translated_name?: { name: string };
+          verses_count: number;
+        };
+      };
+      const total = cJson.chapter.verses_count;
+      const ayahs: number[] = [];
+      for (let i = -radius; i <= radius; i++) {
+        const a = data.ayah + i;
+        if (a >= 1 && a <= total) ayahs.push(a);
+      }
+
+      const verses = await Promise.all(
+        ayahs.map(async (a): Promise<VerseContent | null> => {
+          const key = `${data.surah}:${a}`;
+          const r = await fetch(
+            `${QURAN_API}/verses/by_key/${key}?language=en&fields=text_uthmani&translations=${translationId}`,
+            { headers: { Accept: "application/json" } },
+          );
+          if (!r.ok) return null;
+          const j = (await r.json()) as {
+            verse: {
+              verse_key: string;
+              text_uthmani: string;
+              translations?: { text: string; resource_name?: string }[];
+            };
+          };
+          const tr = j.verse.translations?.[0];
+          return {
+            verseKey: j.verse.verse_key,
+            surah: data.surah,
+            ayah: a,
+            surahNameEn: cJson.chapter.name_simple,
+            surahNameAr: cJson.chapter.name_arabic,
+            surahNameTranslated:
+              cJson.chapter.translated_name?.name ?? cJson.chapter.name_simple,
+            arabic: j.verse.text_uthmani,
+            translation: tr ? stripHtml(tr.text) : "",
+            translationAuthor: tr?.resource_name ?? "Translation",
+            audioUrl: null,
+          };
+        }),
+      );
+      const clean = verses.filter((v): v is VerseContent => !!v);
+      const targetIdx = clean.findIndex((v) => v.ayah === data.ayah);
+      return {
+        target: clean[targetIdx]!,
+        before: clean.slice(0, targetIdx),
+        after: clean.slice(targetIdx + 1),
+      };
+    },
+  );
+
+// ---------- Paginated Semantic Search ----------
+// Re-runs the LLM with a list of verses to EXCLUDE so successive pages yield
+// new picks. The client keeps a running `seenKeys` array and bumps `page`.
+
+export const semanticVerseSearchPaged = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      query: z.string().min(1).max(500),
+      page: z.number().int().min(1).max(10).optional(),
+      pageSize: z.number().int().min(1).max(8).optional(),
+      excludeKeys: z.array(z.string()).max(40).optional(),
+      translationId: z.number().int().optional(),
+    }),
+  )
+  .handler(
+    async ({
+      data,
+    }): Promise<{
+      page: number;
+      pageSize: number;
+      results: Array<{
+        verseKey: string;
+        surah: number;
+        ayah: number;
+        surahNameEn: string;
+        arabic: string;
+        translation: string;
+        tafsirBlurb: string;
+      }>;
+    }> => {
+      const apiKey = process.env.GEMINI_API_KEY;
+      const page = data.page ?? 1;
+      const pageSize = data.pageSize ?? 4;
+      const excludeKeys = new Set(data.excludeKeys ?? []);
+      const translationId = data.translationId ?? DEFAULT_TRANSLATION_ID;
+
+      let picks: Array<{ surah: number; ayah: number; tafsirBlurb: string }> = [];
+
+      if (apiKey) {
+        try {
+          const { GoogleGenerativeAI } = await import("@google/generative-ai");
+          const genAI = new GoogleGenerativeAI(apiKey);
+          const model = genAI.getGenerativeModel({
+            model: "gemini-1.5-flash",
+            systemInstruction:
+              `You are an Islamic scholar surfacing relevant Quran verses. Return RAW JSON: {"results":[{"surah":int,"ayah":int,"tafsirBlurb":string}]} with ${pageSize} entries. tafsirBlurb is 1-2 warm sentences. Do NOT include any of these verseKeys: ${[...excludeKeys].join(", ") || "none"}.`,
+            generationConfig: { responseMimeType: "application/json", temperature: 0.7 },
+          });
+          const prompt = `User feeling/situation: ${data.query}\nPage: ${page}\nReturn fresh, distinct verses.`;
+          const out = await model.generateContent(prompt);
+          const parsed = JSON.parse(out.response.text()) as {
+            results?: Array<{ surah?: number; ayah?: number; tafsirBlurb?: string }>;
+          };
+          if (Array.isArray(parsed.results)) {
+            picks = parsed.results
+              .filter(
+                (r) =>
+                  typeof r.surah === "number" &&
+                  typeof r.ayah === "number" &&
+                  typeof r.tafsirBlurb === "string" &&
+                  !excludeKeys.has(`${r.surah}:${r.ayah}`),
+              )
+              .slice(0, pageSize) as typeof picks;
+          }
+        } catch (e) {
+          console.error("semanticVerseSearchPaged AI failed", e);
+        }
+      }
+
+      const hydrated = await Promise.all(
+        picks.map(async (p) => {
+          try {
+            const key = `${p.surah}:${p.ayah}`;
+            const r = await fetch(
+              `${QURAN_API}/verses/by_key/${key}?language=en&fields=text_uthmani&translations=${translationId}`,
+              { headers: { Accept: "application/json" } },
+            );
+            if (!r.ok) return null;
+            const j = (await r.json()) as {
+              verse: {
+                verse_key: string;
+                text_uthmani: string;
+                translations?: { text: string }[];
+              };
+            };
+            const cR = await fetch(`${QURAN_API}/chapters/${p.surah}?language=en`, {
+              headers: { Accept: "application/json" },
+            });
+            const cJ = cR.ok
+              ? ((await cR.json()) as { chapter: { name_simple: string } })
+              : null;
+            return {
+              verseKey: j.verse.verse_key,
+              surah: p.surah,
+              ayah: p.ayah,
+              surahNameEn: cJ?.chapter.name_simple ?? `Surah ${p.surah}`,
+              arabic: j.verse.text_uthmani,
+              translation: j.verse.translations?.[0]
+                ? stripHtml(j.verse.translations[0].text)
+                : "",
+              tafsirBlurb: p.tafsirBlurb,
+            };
+          } catch {
+            return null;
+          }
+        }),
+      );
+      return {
+        page,
+        pageSize,
+        results: hydrated.filter((x): x is NonNullable<typeof x> => !!x),
+      };
+    },
+  );
+
