@@ -89,7 +89,12 @@ export async function updateReflection(
   id: string,
   patch: Partial<ReflectionInput>,
 ): Promise<ApiResult<Reflection>> {
-  const update: Record<string, unknown> = {};
+  const update: {
+    content?: string;
+    is_public?: boolean;
+    surah_id?: number | null;
+    ayah_number?: number | null;
+  } = {};
   if (typeof patch.content === "string") {
     const c = patch.content.trim().slice(0, MAX);
     if (!c) return { ok: false, error: "Empty reflection" };
