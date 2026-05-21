@@ -12,6 +12,7 @@ import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
 import { AppProvider } from "@/contexts/AppContext";
+import { ReadingProvider } from "@/contexts/ReadingContext";
 
 function NotFoundComponent() {
   return (
@@ -121,8 +122,10 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AppProvider>
-        <Outlet />
-        <Toaster theme="dark" position="top-center" richColors />
+        <ReadingProvider>
+          <Outlet />
+          <Toaster theme="dark" position="top-center" richColors />
+        </ReadingProvider>
       </AppProvider>
     </QueryClientProvider>
   );
