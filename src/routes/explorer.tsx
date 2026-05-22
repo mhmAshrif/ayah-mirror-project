@@ -199,7 +199,7 @@ function ExplorerPage() {
   const markAsLastRead = useCallback(
     (v: ApiVerse) => {
       if (!currentSurah) return;
-      const text = v.translations[0]?.text ? stripHtml(v.translations[0].text) : "";
+      const text = v.translations?.[0]?.text ? stripHtml(v.translations[0].text) : "";
       const marker: LastReadMarker = {
         surahId: currentSurah.id,
         surahName: currentSurah.name_simple,
