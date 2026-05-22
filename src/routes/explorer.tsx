@@ -515,7 +515,7 @@ function ReadView({
 
       {!loading && !error && (
         <div className="mt-6 flex flex-col gap-4">
-          {verses.map((v) => {
+          {verses?.map((v) => {
             const isLast =
               lastRead?.surahId === surahId && lastRead?.verseKey === v.verse_key;
             const isPlaying = playingKey === v.verse_key;
