@@ -199,7 +199,7 @@ function ExplorerPage() {
   const markAsLastRead = useCallback(
     (v: ApiVerse) => {
       if (!currentSurah) return;
-      const text = v.translations[0]?.text ? stripHtml(v.translations[0].text) : "";
+      const text = v.translations?.[0]?.text ? stripHtml(v.translations[0].text) : "";
       const marker: LastReadMarker = {
         surahId: currentSurah.id,
         surahName: currentSurah.name_simple,
@@ -515,11 +515,11 @@ function ReadView({
 
       {!loading && !error && (
         <div className="mt-6 flex flex-col gap-4">
-          {verses.map((v) => {
+          {verses?.map((v) => {
             const isLast =
               lastRead?.surahId === surahId && lastRead?.verseKey === v.verse_key;
             const isPlaying = playingKey === v.verse_key;
-            const translation = v.translations[0];
+            const translation = v.translations?.[0];
             return (
               <article
                 key={v.id}
