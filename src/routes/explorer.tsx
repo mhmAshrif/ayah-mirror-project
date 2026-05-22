@@ -215,9 +215,10 @@ function ExplorerPage() {
         /* ignore */
       }
       pushNotification({
+        kind: "reminder",
         title: `📍 Resume Reading: Surah ${marker.surahName}, Verse ${marker.verseNumber}`,
         body: marker.text,
-      });
+      } as Parameters<typeof pushNotification>[0]);
       toast.success("Saved to Notifications");
     },
     [currentSurah, pushNotification],
