@@ -519,7 +519,7 @@ function ReadView({
             const isLast =
               lastRead?.surahId === surahId && lastRead?.verseKey === v.verse_key;
             const isPlaying = playingKey === v.verse_key;
-            const translation = v.translations[0];
+            const translation = v.translations?.[0];
             return (
               <article
                 key={v.id}
