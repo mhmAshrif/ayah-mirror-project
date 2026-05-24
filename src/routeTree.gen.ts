@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TodayRouteImport } from './routes/today'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SalahRouteImport } from './routes/salah'
 import { Route as ReflectionsRouteImport } from './routes/reflections'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as LoginRouteImport } from './routes/login'
@@ -31,6 +32,11 @@ const TodayRoute = TodayRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalahRoute = SalahRouteImport.update({
+  id: '/salah',
+  path: '/salah',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReflectionsRoute = ReflectionsRouteImport.update({
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/progress': typeof ProgressRoute
   '/reflections': typeof ReflectionsRoute
+  '/salah': typeof SalahRoute
   '/settings': typeof SettingsRoute
   '/today': typeof TodayRoute
   '/api/chat': typeof ApiChatRoute
@@ -113,6 +120,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/progress': typeof ProgressRoute
   '/reflections': typeof ReflectionsRoute
+  '/salah': typeof SalahRoute
   '/settings': typeof SettingsRoute
   '/today': typeof TodayRoute
   '/api/chat': typeof ApiChatRoute
@@ -129,6 +137,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/progress': typeof ProgressRoute
   '/reflections': typeof ReflectionsRoute
+  '/salah': typeof SalahRoute
   '/settings': typeof SettingsRoute
   '/today': typeof TodayRoute
   '/api/chat': typeof ApiChatRoute
@@ -146,6 +155,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/progress'
     | '/reflections'
+    | '/salah'
     | '/settings'
     | '/today'
     | '/api/chat'
@@ -161,6 +171,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/progress'
     | '/reflections'
+    | '/salah'
     | '/settings'
     | '/today'
     | '/api/chat'
@@ -176,6 +187,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/progress'
     | '/reflections'
+    | '/salah'
     | '/settings'
     | '/today'
     | '/api/chat'
@@ -192,6 +204,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ProgressRoute: typeof ProgressRoute
   ReflectionsRoute: typeof ReflectionsRoute
+  SalahRoute: typeof SalahRoute
   SettingsRoute: typeof SettingsRoute
   TodayRoute: typeof TodayRoute
   ApiChatRoute: typeof ApiChatRoute
@@ -212,6 +225,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/salah': {
+      id: '/salah'
+      path: '/salah'
+      fullPath: '/salah'
+      preLoaderRoute: typeof SalahRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reflections': {
@@ -315,6 +335,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ProgressRoute: ProgressRoute,
   ReflectionsRoute: ReflectionsRoute,
+  SalahRoute: SalahRoute,
   SettingsRoute: SettingsRoute,
   TodayRoute: TodayRoute,
   ApiChatRoute: ApiChatRoute,
