@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TodayRouteImport } from './routes/today'
+import { Route as TasbihRouteImport } from './routes/tasbih'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SalahRouteImport } from './routes/salah'
 import { Route as ReflectionsRouteImport } from './routes/reflections'
@@ -27,6 +28,11 @@ import { Route as ApiChatRouteImport } from './routes/api/chat'
 const TodayRoute = TodayRouteImport.update({
   id: '/today',
   path: '/today',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TasbihRoute = TasbihRouteImport.update({
+  id: '/tasbih',
+  path: '/tasbih',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/reflections': typeof ReflectionsRoute
   '/salah': typeof SalahRoute
   '/settings': typeof SettingsRoute
+  '/tasbih': typeof TasbihRoute
   '/today': typeof TodayRoute
   '/api/chat': typeof ApiChatRoute
   '/api/match-emotion': typeof ApiMatchEmotionRoute
@@ -122,6 +129,7 @@ export interface FileRoutesByTo {
   '/reflections': typeof ReflectionsRoute
   '/salah': typeof SalahRoute
   '/settings': typeof SettingsRoute
+  '/tasbih': typeof TasbihRoute
   '/today': typeof TodayRoute
   '/api/chat': typeof ApiChatRoute
   '/api/match-emotion': typeof ApiMatchEmotionRoute
@@ -139,6 +147,7 @@ export interface FileRoutesById {
   '/reflections': typeof ReflectionsRoute
   '/salah': typeof SalahRoute
   '/settings': typeof SettingsRoute
+  '/tasbih': typeof TasbihRoute
   '/today': typeof TodayRoute
   '/api/chat': typeof ApiChatRoute
   '/api/match-emotion': typeof ApiMatchEmotionRoute
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
     | '/reflections'
     | '/salah'
     | '/settings'
+    | '/tasbih'
     | '/today'
     | '/api/chat'
     | '/api/match-emotion'
@@ -173,6 +183,7 @@ export interface FileRouteTypes {
     | '/reflections'
     | '/salah'
     | '/settings'
+    | '/tasbih'
     | '/today'
     | '/api/chat'
     | '/api/match-emotion'
@@ -189,6 +200,7 @@ export interface FileRouteTypes {
     | '/reflections'
     | '/salah'
     | '/settings'
+    | '/tasbih'
     | '/today'
     | '/api/chat'
     | '/api/match-emotion'
@@ -206,6 +218,7 @@ export interface RootRouteChildren {
   ReflectionsRoute: typeof ReflectionsRoute
   SalahRoute: typeof SalahRoute
   SettingsRoute: typeof SettingsRoute
+  TasbihRoute: typeof TasbihRoute
   TodayRoute: typeof TodayRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiMatchEmotionRoute: typeof ApiMatchEmotionRoute
@@ -218,6 +231,13 @@ declare module '@tanstack/react-router' {
       path: '/today'
       fullPath: '/today'
       preLoaderRoute: typeof TodayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tasbih': {
+      id: '/tasbih'
+      path: '/tasbih'
+      fullPath: '/tasbih'
+      preLoaderRoute: typeof TasbihRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -337,6 +357,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReflectionsRoute: ReflectionsRoute,
   SalahRoute: SalahRoute,
   SettingsRoute: SettingsRoute,
+  TasbihRoute: TasbihRoute,
   TodayRoute: TodayRoute,
   ApiChatRoute: ApiChatRoute,
   ApiMatchEmotionRoute: ApiMatchEmotionRoute,
@@ -344,3 +365,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
