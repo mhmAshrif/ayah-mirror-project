@@ -126,6 +126,18 @@ function TasbihPage() {
     setPhraseIndex(s.phraseIndex);
   }, []);
 
+  /* Spacebar tap */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === "Space" && !e.repeat) {
+        e.preventDefault();
+        handleTap(e as unknown as React.MouseEvent);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [handleTap]);
+
   const phrase = DHIKR_OPTIONS[phraseIndex];
 
   /* Progress ring math */
