@@ -40,6 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "today", label: "Today for You", icon: Heart, to: "/today" },
   { key: "explorer", label: "Quran Explorer", icon: BookOpen, to: "/explorer" },
   { key: "salah", label: "Salah Tracker", icon: Clock, to: "/salah" },
+  { key: "tasbih", label: "Digital Tasbih", icon: CircleDot, to: "/tasbih" },
   { key: "reflections", label: "Reflections", icon: Pencil, to: "/reflections" },
   { key: "progress", label: "Progress", icon: TrendingUp, to: "/progress" },
   { key: "bookmarks", label: "Bookmarks", icon: Bookmark, to: "/bookmarks" },
