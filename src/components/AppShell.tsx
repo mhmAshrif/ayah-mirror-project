@@ -5,6 +5,7 @@ import {
   BookOpen,
   Bookmark,
   ChevronDown,
+  CircleDot,
   Compass,
   Heart,
   Home,
