@@ -178,13 +178,25 @@ function TasbihPage() {
             completedRef.current = false;
           }, 3000);
         }
-        return next;
-      });
-    },
-    [target, phraseIndex, phrase],
-  );
+      return next;
+    });
+  },
+  [target, phraseIndex, phrase],
+);
 
-  /* Reset */
+/* Spacebar tap */
+useEffect(() => {
+  const onKey = (e: KeyboardEvent) => {
+    if (e.code === "Space" && !e.repeat) {
+      e.preventDefault();
+      handleTap(e as unknown as React.MouseEvent);
+    }
+  };
+  window.addEventListener("keydown", onKey);
+  return () => window.removeEventListener("keydown", onKey);
+}, [handleTap]);
+
+/* Reset */
   const handleReset = useCallback(() => {
     setCount(0);
     completedRef.current = false;
