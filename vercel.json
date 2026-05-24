@@ -1,0 +1,9 @@
+{
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "destination": "https://soul-verses.lovable.app/$1",
+      "permanent": false
+    }
+  ]
+}
